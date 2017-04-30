@@ -7,6 +7,7 @@ import itertools
 import json
 import logging
 import random
+import re
 import signal
 import sys
 if 'threading' in sys.modules:
@@ -257,7 +258,10 @@ class InstaBot:
                 self.write_log(log_string)
             else:
                 self.login_status = False
-                self.write_log('Login error! Check your login data!')
+                if re.match(r"[^@]+@[^@]+\.[^@]+", self.user_login):
+                    self.write_log('You can only login using an Instagram username! Email address login is currently not supported by the bot!')
+                else:
+                    self.write_log('Login error! Check your login data!')
         else:
             self.write_log('Login error! Connection error!')
 
