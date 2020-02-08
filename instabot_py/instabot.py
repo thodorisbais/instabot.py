@@ -487,15 +487,17 @@ class InstaBot:
 
     def logout(self):
         now_time = datetime.datetime.now()
-        self.logger.info("Logging out from a program ...")
         work_time = now_time - self.bot_start
-        self.logger.info(f"Bot has been working for {work_time}")
-
+        self.logger.info(f"Bot has been working for {work_time}. Logging out "
+                         f"from an Instagram ...")
         try:
             _ = self.s.post(self.url_logout,
                             data={"csrfmiddlewaretoken": self.csrftoken})
             self.logger.info("Logout has been successfully performed")
             self.login_status = False
+            if self.session_file and os.path.isfile(self.session_file):
+                self.remove_spoiled_session_file(self.session_file)
+            exit(0)
         except Exception as exc:
             logging.error("Logout error!")
             logging.exception(exc)
@@ -509,26 +511,33 @@ class InstaBot:
         """ Get media ID set, by your hashtag or location """
         medias = None
         if tag.startswith('l:'):
-            tag = tag.replace('l:', '')
-            self.logger.debug(f"Getting media by location: {tag}")
-            url_location = self.url_location % tag
-            r = self.s.get(url_location)
-            try:
-                all_data = json.loads(r.text)
-                medias = list(all_data['graphql']['location'][
-                                  'edge_location_to_media']['edges'])
-            except Exception as exc:
-                self.logger.exception(exc)
+            l_tag = tag.replace('l:', '')
+            self.logger.debug(f"Getting media by location: {l_tag}")
+            url_tag = self.url_location % l_tag
         else:
             self.logger.debug(f"Getting media by tag: {tag}")
             url_tag = self.url_tag % tag
-            r = self.s.get(url_tag)
-            try:
-                all_data = json.loads(r.text)
-                medias = list(all_data['graphql']['hashtag'][
-                                  'edge_hashtag_to_media']['edges'])
-            except Exception as exc:
-                self.logger.exception(exc)
+
+        r = self.s.get(url_tag)
+        if r.status_code == 200:
+            if tag.startswith('l:'):
+                try:
+                    all_data = json.loads(r.text)
+                    medias = list(all_data['graphql']['location'][
+                                      'edge_location_to_media']['edges'])
+                except Exception as exc:
+                    self.logger.exception(exc)
+            else:
+                try:
+                    all_data = json.loads(r.text)
+                    medias = list(all_data['graphql']['hashtag'][
+                                      'edge_hashtag_to_media']['edges'])
+                except Exception as exc:
+                    self.logger.exception(exc)
+        else:
+            self.logger.fatal(f"Could not find tag {tag} in Instagram. Please "
+                              f"verify your configuration!")
+            exit(1)
 
         return medias
 
@@ -545,7 +554,7 @@ class InstaBot:
                      :max_tag_like_count]
             self.logger.debug(f"Selected {len(medias)} medias to process. "
                               f"Increase max_like_for_one_tag value for more "
-                              f"processing medias ")
+                              f"processing medias")
             if medias:
                 break
         # we need to wait between 3 to 8 seconds after we retrieved medias
