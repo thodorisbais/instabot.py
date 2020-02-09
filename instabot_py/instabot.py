@@ -888,7 +888,7 @@ class InstaBot:
                                   f"{follower.username}")
                 media_to_like_url = self.get_media_url(media_id)
                 if not self.persistence.check_already_liked(media_id=media_id):
-                    if self.like(media_id):
+                    if self.like(media_id, media_to_like_url):
                         self.like_followers_counter += 1
                         self.logger.info(
                             f"Liked media of your follower {follower.username} "
