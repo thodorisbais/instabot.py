@@ -925,18 +925,18 @@ class InstaBot:
                 self.logger.debug("Nothing to unlike")
 
     def get_followers_count(self, username):
+        url_info = self.url_user_detail % username
         try:
-            resp = self.s.get(self.url_user_detail % (username))
+            resp = self.s.get(url_info)
             all_data = json.loads(
-                re.search(
-                    "window._sharedData = (.*?);</script>", resp.text, re.DOTALL
-                ).group(1)
-            )
-            followers_count = all_data["entry_data"]["ProfilePage"][0]["graphql"][
-                "user"
-            ]["edge_followed_by"]["count"]
+                re.search("window._sharedData = (.*?);</script>", resp.text,
+                          re.DOTALL).group(1))
+            followers_count = all_data['entry_data']['ProfilePage'][0][
+                'graphql']['user']['edge_followed_by']['count']
         except Exception as exc:
-            self.logger.exception(exc)
+            self.logger.warning(f"Could not retrieve number of followers of "
+                                f"user {username}, url: {url_info}. Status "
+                                f"code: {resp.status_code}")
             followers_count = 0
         return followers_count
 
@@ -979,8 +979,8 @@ class InstaBot:
         if not self.user_min_follow and not self.user_max_follow:
             return True
 
-        try:
-            followers = self.get_followers_count(username)
+        followers = self.get_followers_count(username)
+        if followers:
             if followers < self.user_min_follow:
                 self.logger.debug(f"Will not follow user {username}: does not "
                                   f"meet user_min_follow requirement")
@@ -990,10 +990,8 @@ class InstaBot:
                 self.logger.debug(f"Will not follow user {username}: does not "
                                   f"meet user_max_follow requirement")
                 return False
-
-        except Exception as exc:
-            self.logger.exception(exc)
-
+        else:
+            return False
         return True
 
     def verify_account(self, username):
