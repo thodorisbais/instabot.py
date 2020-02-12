@@ -648,6 +648,15 @@ class InstaBot:
         if resp.status_code == 200:
             self.persistence.insert_media(media_id=media_id, status="200")
             return True
+        elif resp.status_code == 400:
+            self.logger.info(f"Could not like media: id: {media_id}, url: "
+                             f"{media_url}, status code: {resp.status_code}. "
+                             f"Reason: {resp.text}")
+            self.logger.fatal("Your like action has just been banned by "
+                              "Instagram. Exiting from a program... You can "
+                              "start your bot again if you disable like action "
+                              "in your configuration: set 'like_per_run: 0'")
+            exit(0)
         else:
             self.persistence.insert_media(media_id=media_id,
                                           status=str(resp.status_code))
@@ -656,7 +665,6 @@ class InstaBot:
                              f"status code: {resp.status_code}. "
                              f"Reason: {resp.text}")
             return False
-        return True
 
     def unlike(self, media_id):
         """ Send http request to unlike media by ID """
