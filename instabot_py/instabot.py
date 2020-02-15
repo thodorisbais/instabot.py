@@ -1236,20 +1236,9 @@ class InstaBot:
         url_check = self.url_media % media_code
         try:
             resp = self.s.get(url_check)
-        except Exception as exc:
-            self.logger.warning(f"Could not comment media {media_code}, url: "
-                                f"{url_check}: status code: {resp.status_code}."
-                                f" Reason: {resp.text}")
-            self.logger.exception(exc)
-            return False
-
-        if 'dialog-404' in resp.text:
-            self.logger.warning(f"Tried to comment media {media_code}, url: "
-                                f"{url_check}: it does not exist anymore")
-            return False
-
-        if resp.status_code == 200:
-            try:
+            warn = f"Could not comment media {media_code}, url: {url_check}: " \
+                   f"status code: {resp.status_code}. Reason: {resp.text}"
+            if resp.status_code == 200:
                 raw_data = re.search(
                     "window.__additionalDataLoaded\\('/p/\\w*/',(.*?)\\);",
                     resp.text, re.DOTALL).group(1)
@@ -1258,7 +1247,7 @@ class InstaBot:
                 if all_data['graphql']['shortcode_media']['owner']['id'] == \
                         self.user_id:
                     self.logger.debug(f"This media {media_code}, url: "
-                                      f"{url_check} is yours")
+                                      f"{url_check} is yours. Skipping it")
                     return False
 
                 edges = all_data['graphql']['shortcode_media'].get(
@@ -1268,26 +1257,25 @@ class InstaBot:
                         'edge_media_to_parent_comment', None)
 
                 comments = list(edges['edges'])
-
                 for comment in comments:
                     if comment['node']['owner']['id'] == self.user_id:
                         self.logger.debug(f"This media {media_code}, url: "
                                           f"{url_check} is already commented by"
                                           f" you")
                         return False
+                return True
 
-            except Exception as exc:
-                self.logger.critical(f"Could not retrieve comments from media "
-                                     f"{media_code}, url: {url_check}. "
-                                     f"Response code: {resp.status_code}")
-                self.logger.exception(exc)
+            elif resp.status_code == 404:
+                self.logger.warning(f"This media {media_code}, url: {url_check}"
+                                    f"does not exist anymore")
                 return False
 
-            return True
+            else:
+                self.logger.warning(warn)
+                return False
 
-        elif resp.status_code == 404:
-            self.logger.warning(f"This media {media_code}, url: {url_check} "
-                                f"does not exist anymore")
+        except Exception as exc:
+            self.logger.warning(warn)
             return False
 
     def get_medias_from_recent_feed(self):
